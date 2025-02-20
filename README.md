@@ -52,7 +52,7 @@ To run this web app:
 1. Make sure you have Node.js installed on your system.
 2. Install the necessary dependencies by running `npm install` in your project directory.
 3. Set up environment variables for NextAuth.js (e.g., NEXTAUTH_SECRET).
-4. Start the development server with `npm run dev`.
+4. Start the development server with 'npm install --legacy-peer-deps' before `npm run dev`.
 5. Open a web browser and navigate to `http://localhost:3000` to view the app.
 
 

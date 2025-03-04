@@ -9,18 +9,35 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const router = useRouter()
+  const { signIn } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would typically send the data to your backend for authentication
-    console.log("Login:", { email, password })
-    // For now, we'll just redirect to the class setup page
-    router.push("/class-setup")
+    setLoading(true)
+    setError("")
+
+    try {
+      const { error: signInError } = await signIn(email, password)
+
+      if (signInError) {
+        setError(signInError.message)
+        return
+      }
+
+      router.push("/dashboard")
+    } catch (err: any) {
+      setError(err.message || "An error occurred during login")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -30,6 +47,7 @@ export default function LoginForm() {
         <CardDescription>Enter your credentials to access your dashboard</CardDescription>
       </CardHeader>
       <CardContent>
+        {error && <div className="bg-red-50 text-red-500 p-3 rounded-md mb-4">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -45,8 +63,8 @@ export default function LoginForm() {
               required
             />
           </div>
-          <Button type="submit" className="w-full">
-            Log In
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Logging In..." : "Log In"}
           </Button>
         </form>
       </CardContent>

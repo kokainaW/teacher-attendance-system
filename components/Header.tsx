@@ -3,24 +3,16 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/AuthContext"
-import { Badge } from "@/components/ui/badge"
 
 export default function Header() {
-  const { user, signOut, isDemo } = useAuth()
+  const { user, signOut } = useAuth()
 
   return (
     <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="text-2xl font-bold">
-            School Name Attendance
-          </Link>
-          {isDemo && (
-            <Badge variant="secondary" className="text-xs">
-              Demo Mode
-            </Badge>
-          )}
-        </div>
+        <Link href="/" className="text-2xl font-bold">
+          School Name Attendance
+        </Link>
         <nav className="space-x-4">
           {user ? (
             <>

@@ -1,10 +1,9 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { supabase, isUsingMockDatabase } from "@/lib/supabase"
-import { getTeacherByEmail } from "@/lib/database"
+import { supabase } from "@/lib/supabase"
+import { getTeacherByEmail, createTeacher } from "@/lib/database"
 import { useRouter } from "next/navigation"
-import * as mockDb from "@/lib/mock-database"
 
 type AuthContextType = {
   user: any | null
@@ -13,7 +12,6 @@ type AuthContextType = {
   signUp: (email: string, password: string, name: string) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
-  isDemo: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -23,116 +21,112 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [teacher, setTeacher] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const isDemo = isUsingMockDatabase
 
   useEffect(() => {
     const getUser = async () => {
-      if (isDemo) {
-        const { data } = await mockDb.mockGetSession()
-        setUser(data.session?.user || null)
+      try {
+        const { data } = await supabase.auth.getSession()
+        const session = data.session
 
-        if (data.session?.user) {
-          const teacherData = await getTeacherByEmail(data.session.user.email)
-          setTeacher(teacherData)
-        }
-      } else {
-        const {
-          data: { session },
-        } = await supabase!.auth.getSession()
         setUser(session?.user || null)
 
         if (session?.user) {
           const teacherData = await getTeacherByEmail(session.user.email!)
           setTeacher(teacherData)
         }
+      } catch (error) {
+        console.error("Error getting user:", error)
+      } finally {
+        setLoading(false)
       }
-
-      setLoading(false)
     }
 
     getUser()
 
-    if (isDemo) {
-      const { data } = mockDb.mockOnAuthStateChange((event: string, session: any) => {
-        setUser(session?.user || null)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user || null)
 
-        if (session?.user) {
-          getTeacherByEmail(session.user.email).then((teacherData) => {
-            setTeacher(teacherData)
-          })
-        } else {
-          setTeacher(null)
-        }
-
-        setLoading(false)
-      })
-
-      return () => {
-        data.subscription.unsubscribe()
+      if (session?.user) {
+        const teacherData = await getTeacherByEmail(session.user.email!)
+        setTeacher(teacherData)
+      } else {
+        setTeacher(null)
       }
-    } else {
-      const {
-        data: { subscription },
-      } = supabase!.auth.onAuthStateChange(async (event, session) => {
-        setUser(session?.user || null)
 
-        if (session?.user) {
-          const teacherData = await getTeacherByEmail(session.user.email!)
-          setTeacher(teacherData)
-        } else {
-          setTeacher(null)
-        }
+      setLoading(false)
+    })
 
-        setLoading(false)
-      })
-
-      return () => {
-        subscription.unsubscribe()
-      }
+    return () => {
+      subscription.unsubscribe()
     }
-  }, [isDemo])
+  }, [])
 
   const signUp = async (email: string, password: string, name: string) => {
-    if (isDemo) {
-      return mockDb.mockSignUp(email, password, name)
-    } else {
-      const { data, error } = await supabase!.auth.signUp({
+    try {
+      const { error } = await supabase.auth.signUp({
         email,
         password,
       })
 
-      if (!error && data.user) {
-        await getTeacherByEmail(email)
+      if (error) {
+        console.error("Error signing up:", error)
+        return { error }
       }
 
+      // Create teacher record
+      const teacherData = await createTeacher(email, name)
+      setTeacher(teacherData)
+
+      return { error: null }
+    } catch (error: any) {
+      console.error("Exception signing up:", error)
       return { error }
     }
   }
 
   const signIn = async (email: string, password: string) => {
-    if (isDemo) {
-      return mockDb.mockSignIn(email, password)
-    } else {
-      const { data, error } = await supabase!.auth.signInWithPassword({
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
+      if (error) {
+        console.error("Error signing in:", error)
+        return { error }
+      }
+
+      return { error: null }
+    } catch (error: any) {
+      console.error("Exception signing in:", error)
       return { error }
     }
   }
 
   const signOut = async () => {
-    if (isDemo) {
-      await mockDb.mockSignOut()
-    } else {
-      await supabase!.auth.signOut()
+    try {
+      await supabase.auth.signOut()
+      setUser(null)
+      setTeacher(null)
+      router.push("/login")
+    } catch (error) {
+      console.error("Error signing out:", error)
     }
-    router.push("/login")
   }
 
   return (
-    <AuthContext.Provider value={{ user, teacher, loading, signUp, signIn, signOut, isDemo }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        teacher,
+        loading,
+        signUp,
+        signIn,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

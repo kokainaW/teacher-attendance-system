@@ -3,9 +3,10 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/AuthContext"
+import { Loader2 } from "lucide-react"
 
 export default function Header() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, loading } = useAuth()
 
   return (
     <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
@@ -14,7 +15,12 @@ export default function Header() {
           School Name Attendance
         </Link>
         <nav className="space-x-4">
-          {user ? (
+          {loading ? (
+            <Button variant="ghost" disabled>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading...
+            </Button>
+          ) : user ? (
             <>
               <Button variant="ghost" asChild>
                 <Link href="/dashboard">Dashboard</Link>

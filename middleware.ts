@@ -6,19 +6,29 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
 
   try {
+    // Create a Supabase client for the middleware
     const supabase = createMiddlewareClient({ req, res })
 
+    // Get the user's session
     const {
       data: { session },
     } = await supabase.auth.getSession()
 
-    // If no session and trying to access protected routes
-    if (
-      !session &&
-      (req.nextUrl.pathname.startsWith("/dashboard") || req.nextUrl.pathname.startsWith("/class-setup"))
-    ) {
-      const redirectUrl = new URL("/login", req.url)
-      return NextResponse.redirect(redirectUrl)
+    // Get the URL the user is requesting
+    const url = req.nextUrl.clone()
+    const isAuthPage = url.pathname === "/login" || url.pathname === "/signup"
+    const isProtectedRoute = url.pathname.startsWith("/dashboard") || url.pathname.startsWith("/class-setup")
+
+    // If user is signed in and on an auth page, redirect to dashboard
+    if (session && isAuthPage) {
+      url.pathname = "/dashboard"
+      return NextResponse.redirect(url)
+    }
+
+    // If user is not signed in and on a protected route, redirect to login
+    if (!session && isProtectedRoute) {
+      url.pathname = "/login"
+      return NextResponse.redirect(url)
     }
   } catch (error) {
     console.error("Middleware error:", error)
@@ -28,6 +38,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/class-setup/:path*"],
+  matcher: ["/login", "/signup", "/dashboard/:path*", "/class-setup/:path*"],
 }
 
